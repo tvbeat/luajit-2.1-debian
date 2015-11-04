@@ -16,7 +16,7 @@ override_dh_auto_clean:
 override_dh_auto_install:
 	make install PREFIX=/usr DESTDIR=$$PWD/debian/tmp/ MULTILIB=lib/$(DEB_HOST_MULTIARCH)
 	cd debian/tmp/usr/bin && \
-		ln -fs luajit-2.1.0-alpha luajit
+		ln -fs luajit-2.1.0-beta1 luajit
 	cd debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH) &&  \
 		ln -fs libluajit-5.1.so.$(ABI) libluajit-5.1.so &&  \
 		ln -fs libluajit-5.1.so.$(ABI) libluajit-5.1.so.$(ABIM)
