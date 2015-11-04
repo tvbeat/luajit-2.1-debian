@@ -1,6 +1,6 @@
 /*
 ** I/O library.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2011 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -99,7 +99,7 @@ static int io_file_close(lua_State *L, IOFileUD *iof)
     int stat = -1;
 #if LJ_TARGET_POSIX
     stat = pclose(iof->fp);
-#elif LJ_TARGET_WINDOWS
+#elif LJ_TARGET_WINDOWS && !LJ_TARGET_XBOXONE
     stat = _pclose(iof->fp);
 #else
     lua_assert(0);
@@ -273,6 +273,15 @@ static int io_file_iter(lua_State *L)
   return n;
 }
 
+static int io_file_lines(lua_State *L)
+{
+  int n = (int)(L->top - L->base);
+  if (n > LJ_MAX_UPVAL)
+    lj_err_caller(L, LJ_ERR_UNPACK);
+  lua_pushcclosure(L, io_file_iter, n);
+  return 1;
+}
+
 /* -- I/O file methods ---------------------------------------------------- */
 
 #define LJLIB_MODULE_io_method
@@ -356,8 +365,7 @@ LJLIB_CF(io_method_setvbuf)
 LJLIB_CF(io_method_lines)
 {
   io_tofile(L);
-  lua_pushcclosure(L, io_file_iter, (int)(L->top - L->base));
-  return 1;
+  return io_file_lines(L);
 }
 
 LJLIB_CF(io_method___gc)
@@ -400,7 +408,7 @@ LJLIB_CF(io_open)
 
 LJLIB_CF(io_popen)
 {
-#if LJ_TARGET_POSIX || LJ_TARGET_WINDOWS
+#if LJ_TARGET_POSIX || (LJ_TARGET_WINDOWS && !LJ_TARGET_XBOXONE)
   const char *fname = strdata(lj_lib_checkstr(L, 1));
   GCstr *s = lj_lib_optstr(L, 2);
   const char *mode = s ? strdata(s) : "r";
@@ -421,7 +429,7 @@ LJLIB_CF(io_popen)
 LJLIB_CF(io_tmpfile)
 {
   IOFileUD *iof = io_file_new(L);
-#if LJ_TARGET_PS3
+#if LJ_TARGET_PS3 || LJ_TARGET_PS4 || LJ_TARGET_PSVITA
   iof->fp = NULL; errno = ENOSYS;
 #else
   iof->fp = tmpfile();
@@ -487,8 +495,7 @@ LJLIB_CF(io_lines)
   } else {  /* io.lines() iterates over stdin. */
     setudataV(L, L->base, IOSTDF_UD(L, GCROOT_IO_INPUT));
   }
-  lua_pushcclosure(L, io_file_iter, (int)(L->top - L->base));
-  return 1;
+  return io_file_lines(L);
 }
 
 LJLIB_CF(io_type)

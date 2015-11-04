@@ -1,6 +1,6 @@
 /*
 ** IR CALL* instruction definitions.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_IRCALL_H
@@ -98,6 +98,12 @@ typedef struct CCallInfo {
 #define IRCALLCOND_FFI32(x)		NULL
 #endif
 
+#if LJ_TARGET_X86
+#define CCI_RANDFPR	0	/* Clang on OSX/x86 is overzealous. */
+#else
+#define CCI_RANDFPR	CCI_NOFPRCLOBBER
+#endif
+
 #if LJ_SOFTFP
 #define XA_FP		CCI_XA
 #define XA2_FP		(CCI_XA+CCI_XA)
@@ -144,12 +150,13 @@ typedef struct CCallInfo {
   _(ANY,	lj_tab_new_ah,		3,   A, TAB, CCI_L) \
   _(ANY,	lj_tab_new1,		2,  FS, TAB, CCI_L) \
   _(ANY,	lj_tab_dup,		2,  FS, TAB, CCI_L) \
+  _(ANY,	lj_tab_clear,		1,  FS, NIL, 0) \
   _(ANY,	lj_tab_newkey,		3,   S, P32, CCI_L) \
   _(ANY,	lj_tab_len,		1,  FL, INT, 0) \
   _(ANY,	lj_gc_step_jit,		2,  FS, NIL, CCI_L) \
   _(ANY,	lj_gc_barrieruv,	2,  FS, NIL, 0) \
   _(ANY,	lj_mem_newgco,		2,  FS, P32, CCI_L) \
-  _(ANY,	lj_math_random_step, 1, FS, NUM, CCI_CASTU64|CCI_NOFPRCLOBBER) \
+  _(ANY,	lj_math_random_step, 1, FS, NUM, CCI_CASTU64|CCI_RANDFPR)\
   _(ANY,	lj_vm_modi,		2,  FN, INT, 0) \
   _(ANY,	sinh,			1,   N, NUM, XA_FP) \
   _(ANY,	cosh,			1,   N, NUM, XA_FP) \
@@ -162,18 +169,18 @@ typedef struct CCallInfo {
   _(FPMATH,	lj_vm_ceil,		1,   N, NUM, XA_FP) \
   _(FPMATH,	lj_vm_trunc,		1,   N, NUM, XA_FP) \
   _(FPMATH,	sqrt,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	exp,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	lj_vm_exp2,		1,   N, NUM, XA_FP) \
-  _(FPMATH,	log,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	lj_vm_log2,		1,   N, NUM, XA_FP) \
-  _(FPMATH,	log10,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	sin,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	cos,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	tan,			1,   N, NUM, XA_FP) \
-  _(FPMATH,	lj_vm_powi,		2,   N, NUM, XA_FP) \
-  _(FPMATH,	pow,			2,   N, NUM, XA2_FP) \
-  _(FPMATH,	atan2,			2,   N, NUM, XA2_FP) \
-  _(FPMATH,	ldexp,			2,   N, NUM, XA_FP) \
+  _(ANY,	exp,			1,   N, NUM, XA_FP) \
+  _(ANY,	lj_vm_exp2,		1,   N, NUM, XA_FP) \
+  _(ANY,	log,			1,   N, NUM, XA_FP) \
+  _(ANY,	lj_vm_log2,		1,   N, NUM, XA_FP) \
+  _(ANY,	log10,			1,   N, NUM, XA_FP) \
+  _(ANY,	sin,			1,   N, NUM, XA_FP) \
+  _(ANY,	cos,			1,   N, NUM, XA_FP) \
+  _(ANY,	tan,			1,   N, NUM, XA_FP) \
+  _(ANY,	lj_vm_powi,		2,   N, NUM, XA_FP) \
+  _(ANY,	pow,			2,   N, NUM, XA2_FP) \
+  _(ANY,	atan2,			2,   N, NUM, XA2_FP) \
+  _(ANY,	ldexp,			2,   N, NUM, XA_FP) \
   _(SOFTFP,	lj_vm_tobit,		2,   N, INT, 0) \
   _(SOFTFP,	softfp_add,		4,   N, NUM, 0) \
   _(SOFTFP,	softfp_sub,		4,   N, NUM, 0) \

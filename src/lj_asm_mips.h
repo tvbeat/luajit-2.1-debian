@@ -1,6 +1,6 @@
 /*
 ** MIPS IR assembler (SSA IR -> machine code).
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 /* -- Register allocator extensions --------------------------------------- */
@@ -372,9 +372,10 @@ static void asm_retf(ASMState *as, IRIns *ir)
 {
   Reg base = ra_alloc1(as, REF_BASE, RSET_GPR);
   void *pc = ir_kptr(IR(ir->op2));
-  int32_t delta = 1+bc_a(*((const BCIns *)pc - 1));
+  int32_t delta = 1+LJ_FR2+bc_a(*((const BCIns *)pc - 1));
   as->topslot -= (BCReg)delta;
   if ((int32_t)as->topslot < 0) as->topslot = 0;
+  irt_setmark(IR(REF_BASE)->t);  /* Children must not coalesce with BASE reg. */
   emit_setgl(as, base, jit_base);
   emit_addptr(as, base, -8*delta);
   asm_guard(as, MIPSI_BNE, RID_TMP,
@@ -1697,7 +1698,7 @@ static void asm_head_root_base(ASMState *as)
   if (as->loopinv) as->mctop--;
   if (ra_hasreg(r)) {
     ra_free(as, r);
-    if (rset_test(as->modset, r))
+    if (rset_test(as->modset, r) || irt_ismarked(ir->t))
       ir->r = RID_INIT;  /* No inheritance for modified BASE register. */
     if (r != RID_BASE)
       emit_move(as, r, RID_BASE);
@@ -1712,7 +1713,7 @@ static RegSet asm_head_side_base(ASMState *as, IRIns *irp, RegSet allow)
   if (as->loopinv) as->mctop--;
   if (ra_hasreg(r)) {
     ra_free(as, r);
-    if (rset_test(as->modset, r))
+    if (rset_test(as->modset, r) || irt_ismarked(ir->t))
       ir->r = RID_INIT;  /* No inheritance for modified BASE register. */
     if (irp->r == r) {
       rset_clear(allow, r);  /* Mark same BASE register as coalesced. */

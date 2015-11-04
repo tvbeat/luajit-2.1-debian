@@ -1,6 +1,6 @@
 /*
 ** String library.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -58,21 +58,21 @@ LJLIB_ASM(string_byte)		LJLIB_REC(string_range 0)
   lj_state_checkstack(L, (MSize)n);
   p = (const unsigned char *)strdata(s) + start;
   for (i = 0; i < n; i++)
-    setintV(L->base + i-1, p[i]);
+    setintV(L->base + i-1-LJ_FR2, p[i]);
   return FFH_RES(n);
 }
 
 LJLIB_ASM(string_char)		LJLIB_REC(.)
 {
   int i, nargs = (int)(L->top - L->base);
-  char *buf = lj_buf_tmp(L, (size_t)nargs);
+  char *buf = lj_buf_tmp(L, (MSize)nargs);
   for (i = 1; i <= nargs; i++) {
     int32_t k = lj_lib_checkint(L, i);
     if (!checku8(k))
       lj_err_arg(L, i, LJ_ERR_BADVAL);
     buf[i-1] = (char)k;
   }
-  setstrV(L, L->base-1, lj_str_new(L, buf, (size_t)nargs));
+  setstrV(L, L->base-1-LJ_FR2, lj_str_new(L, buf, (size_t)nargs));
   return FFH_RES(1);
 }
 

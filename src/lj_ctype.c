@@ -1,6 +1,6 @@
 /*
 ** C type management.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #include "lj_obj.h"
@@ -38,6 +38,8 @@
   _("uint64_t",			UINT64) \
   _("intptr_t",			INT_PSZ) \
   _("uintptr_t",		UINT_PSZ) \
+  /* From POSIX. */ \
+  _("ssize_t",			INT_PSZ) \
   /* End of typedef list. */
 
 /* Keywords (only the ones we actually care for). */

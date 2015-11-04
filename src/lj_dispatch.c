@@ -1,6 +1,6 @@
 /*
 ** Instruction dispatch handling.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lj_dispatch_c
@@ -42,6 +42,12 @@ LJ_STATIC_ASSERT(GG_NUM_ASMFF == FF_NUM_ASMFUNC);
 #include <math.h>
 LJ_FUNCA_NORET void LJ_FASTCALL lj_ffh_coroutine_wrap_err(lua_State *L,
 							  lua_State *co);
+#if !LJ_HASJIT
+#define lj_dispatch_stitch	lj_dispatch_ins
+#endif
+#if !LJ_HASPROFILE
+#define lj_dispatch_profile	lj_dispatch_ins
+#endif
 
 #define GOTFUNC(name)	(ASMFunction)name,
 static const ASMFunction dispatch_got[] = {
@@ -387,7 +393,7 @@ static BCReg cur_topslot(GCproto *pt, const BCIns *pc, uint32_t nres)
   if (bc_op(ins) == BC_UCLO)
     ins = pc[bc_j(ins)];
   switch (bc_op(ins)) {
-  case BC_CALLM: case BC_CALLMT: return bc_a(ins) + bc_c(ins) + nres-1+1;
+  case BC_CALLM: case BC_CALLMT: return bc_a(ins) + bc_c(ins) + nres-1+1+LJ_FR2;
   case BC_RETM: return bc_a(ins) + bc_d(ins) + nres-1;
   case BC_TSETM: return bc_a(ins) + nres-1;
   default: return pt->framesize;
@@ -510,6 +516,23 @@ out:
   ERRNO_RESTORE
   return makeasmfunc(lj_bc_ofs[op]);  /* Return static dispatch target. */
 }
+
+#if LJ_HASJIT
+/* Stitch a new trace. */
+void LJ_FASTCALL lj_dispatch_stitch(jit_State *J, const BCIns *pc)
+{
+  ERRNO_SAVE
+  lua_State *L = J->L;
+  void *cf = cframe_raw(L->cframe);
+  const BCIns *oldpc = cframe_pc(cf);
+  setcframe_pc(cf, pc);
+  /* Before dispatch, have to bias PC by 1. */
+  L->top = L->base + cur_topslot(curr_proto(L), pc+1, cframe_multres_n(cf));
+  lj_trace_stitch(J, pc-1);  /* Point to the CALL instruction. */
+  setcframe_pc(cf, oldpc);
+  ERRNO_RESTORE
+}
+#endif
 
 #if LJ_HASPROFILE
 /* Profile dispatch. */

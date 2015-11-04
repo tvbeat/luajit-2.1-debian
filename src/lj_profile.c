@@ -1,6 +1,6 @@
 /*
 ** Low-overhead profiling.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lj_profile_c
@@ -42,7 +42,12 @@
 #elif LJ_PROFILE_WTHREAD
 
 #define WIN32_LEAN_AND_MEAN
+#if LJ_TARGET_XBOX360
+#include <xtl.h>
+#include <xbox.h>
+#else
 #include <windows.h>
+#endif
 typedef unsigned int (WINAPI *WMM_TPFUNC)(unsigned int);
 #define profile_lock(ps)	EnterCriticalSection(&ps->lock)
 #define profile_unlock(ps)	LeaveCriticalSection(&ps->lock)
@@ -261,7 +266,7 @@ static void profile_timer_start(ProfileState *ps)
 {
 #if LJ_TARGET_WINDOWS
   if (!ps->wmm) {  /* Load WinMM library on-demand. */
-    ps->wmm = LoadLibraryA("winmm.dll");
+    ps->wmm = LoadLibraryExA("winmm.dll", NULL, 0);
     if (ps->wmm) {
       ps->wmm_tbp = (WMM_TPFUNC)GetProcAddress(ps->wmm, "timeBeginPeriod");
       ps->wmm_tep = (WMM_TPFUNC)GetProcAddress(ps->wmm, "timeEndPeriod");

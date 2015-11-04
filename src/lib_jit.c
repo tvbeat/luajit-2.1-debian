@@ -1,6 +1,6 @@
 /*
 ** JIT library.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lib_jit_c
@@ -284,7 +284,7 @@ static GCtrace *jit_checktrace(lua_State *L)
 /* Names of link types. ORDER LJ_TRLINK */
 static const char *const jit_trlinkname[] = {
   "none", "root", "loop", "tail-recursion", "up-recursion", "down-recursion",
-  "interpreter", "return"
+  "interpreter", "return", "stitch"
 };
 
 /* local info = jit.util.traceinfo(tr) */
@@ -695,6 +695,8 @@ static uint32_t jit_cpudetect(lua_State *L)
 	   ver >= 60 ? JIT_F_ARMV6_ : 0;
   flags |= LJ_ARCH_HASFPU == 0 ? 0 : ver >= 70 ? JIT_F_VFPV3 : JIT_F_VFPV2;
 #endif
+#elif LJ_TARGET_ARM64
+  /* No optional CPU features to detect (for now). */
 #elif LJ_TARGET_PPC
 #if LJ_HASJIT
 #if LJ_ARCH_SQRT
@@ -704,8 +706,6 @@ static uint32_t jit_cpudetect(lua_State *L)
   flags |= JIT_F_ROUND;
 #endif
 #endif
-#elif LJ_TARGET_PPCSPE
-  /* Nothing to do. */
 #elif LJ_TARGET_MIPS
 #if LJ_HASJIT
   /* Compile-time MIPS CPU detection. */

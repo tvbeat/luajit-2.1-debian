@@ -1,6 +1,6 @@
 /*
 ** Common definitions for the JIT compiler.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_JIT_H
@@ -97,6 +97,7 @@
   _(\012, maxirconst,	500)	/* Max. # of IR constants of a trace. */ \
   _(\007, maxside,	100)	/* Max. # of side traces of a root trace. */ \
   _(\007, maxsnap,	500)	/* Max. # of snapshots for a trace. */ \
+  _(\011, minstitch,	0)	/* Min. # of IR ins for a stitched trace. */ \
   \
   _(\007, hotloop,	56)	/* # of iter. to detect a hot loop/call. */ \
   _(\007, hotexit,	10)	/* # of taken exits to start a side trace. */ \
@@ -202,7 +203,8 @@ typedef enum {
   LJ_TRLINK_UPREC,		/* Up-recursion. */
   LJ_TRLINK_DOWNREC,		/* Down-recursion. */
   LJ_TRLINK_INTERP,		/* Fallback to interpreter. */
-  LJ_TRLINK_RETURN		/* Return to interpreter. */
+  LJ_TRLINK_RETURN,		/* Return to interpreter. */
+  LJ_TRLINK_STITCH		/* Trace stitching. */
 } TraceLink;
 
 /* Trace object. */
@@ -211,6 +213,9 @@ typedef struct GCtrace {
   uint8_t topslot;	/* Top stack slot already checked to be allocated. */
   uint8_t linktype;	/* Type of link. */
   IRRef nins;		/* Next IR instruction. Biased with REF_BIAS. */
+#if LJ_GC64
+  uint32_t unused_gc64;
+#endif
   GCRef gclist;
   IRIns *ir;		/* IR instructions/constants. Biased with REF_BIAS. */
   IRRef nk;		/* Lowest IR constant. Biased with REF_BIAS. */
@@ -276,6 +281,7 @@ typedef struct BPropEntry {
 
 /* Scalar evolution analysis cache. */
 typedef struct ScEvEntry {
+  MRef pc;		/* Bytecode PC of FORI. */
   IRRef1 idx;		/* Index reference. */
   IRRef1 start;		/* Constant start reference. */
   IRRef1 stop;		/* Constant stop reference. */
@@ -283,6 +289,16 @@ typedef struct ScEvEntry {
   IRType1 t;		/* Scalar type. */
   uint8_t dir;		/* Direction. 1: +, 0: -. */
 } ScEvEntry;
+
+/* Reverse bytecode map (IRRef -> PC). Only for selected instructions. */
+typedef struct RBCHashEntry {
+  MRef pc;		/* Bytecode PC. */
+  GCRef pt;		/* Prototype. */
+  IRRef ref;		/* IR reference. */
+} RBCHashEntry;
+
+/* Number of slots in the reverse bytecode hash table. Must be a power of 2. */
+#define RBCHASH_SLOTS	8
 
 /* 128 bit SIMD constants. */
 enum {
@@ -358,12 +374,14 @@ typedef struct jit_State {
 
   PostProc postproc;	/* Required post-processing after execution. */
 #if LJ_SOFTFP || (LJ_32 && LJ_HASFFI)
-  int needsplit;	/* Need SPLIT pass. */
+  uint8_t needsplit;	/* Need SPLIT pass. */
 #endif
+  uint8_t retryrec;	/* Retry recording. */
 
   GCRef *trace;		/* Array of traces. */
   TraceNo freetrace;	/* Start of scan for next free trace. */
   MSize sizetrace;	/* Size of trace array. */
+  TValue *ktracep;	/* Pointer to K64Array slot with GCtrace pointer. */
 
   IRRef1 chain[IR__MAX];  /* IR instruction skip-list chain anchors. */
   TRef slot[LJ_MAX_JSLOTS+LJ_STACK_EXTRA];  /* Stack slot map. */
@@ -375,6 +393,10 @@ typedef struct jit_State {
   HotPenalty penalty[PENALTY_SLOTS];  /* Penalty slots. */
   uint32_t penaltyslot;	/* Round-robin index into penalty slots. */
   uint32_t prngstate;	/* PRNG state. */
+
+#ifdef LUAJIT_ENABLE_TABLE_BUMP
+  RBCHashEntry rbchash[RBCHASH_SLOTS];  /* Reverse bytecode map. */
+#endif
 
   BPropEntry bpropcache[BPROP_SLOTS];  /* Backpropagation cache slots. */
   uint32_t bpropslot;	/* Round-robin index into bpropcache slots. */

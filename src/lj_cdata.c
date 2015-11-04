@@ -1,6 +1,6 @@
 /*
 ** C data management.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #include "lj_obj.h"
@@ -121,20 +121,25 @@ collect_attrib:
     idx = (ptrdiff_t)intV(key);
     goto integer_key;
   } else if (tvisnum(key)) {  /* Numeric key. */
-    idx = LJ_64 ? (ptrdiff_t)numV(key) : (ptrdiff_t)lj_num2int(numV(key));
+#ifdef _MSC_VER
+    /* Workaround for MSVC bug. */
+    volatile
+#endif
+    lua_Number n = numV(key);
+    idx = LJ_64 ? (ptrdiff_t)n : (ptrdiff_t)lj_num2int(n);
   integer_key:
     if (ctype_ispointer(ct->info)) {
       CTSize sz = lj_ctype_size(cts, ctype_cid(ct->info));  /* Element size. */
-      if (sz != CTSIZE_INVALID) {
-	if (ctype_isptr(ct->info)) {
-	  p = (uint8_t *)cdata_getptr(p, ct->size);
-	} else if ((ct->info & (CTF_VECTOR|CTF_COMPLEX))) {
-	  if ((ct->info & CTF_COMPLEX)) idx &= 1;
-	  *qual |= CTF_CONST;  /* Valarray elements are constant. */
-	}
-	*pp = p + idx*(int32_t)sz;
-	return ct;
+      if (sz == CTSIZE_INVALID)
+	lj_err_caller(cts->L, LJ_ERR_FFI_INVSIZE);
+      if (ctype_isptr(ct->info)) {
+	p = (uint8_t *)cdata_getptr(p, ct->size);
+      } else if ((ct->info & (CTF_VECTOR|CTF_COMPLEX))) {
+	if ((ct->info & CTF_COMPLEX)) idx &= 1;
+	*qual |= CTF_CONST;  /* Valarray elements are constant. */
       }
+      *pp = p + idx*(int32_t)sz;
+      return ct;
     }
   } else if (tviscdata(key)) {  /* Integer cdata key. */
     GCcdata *cdk = cdataV(key);

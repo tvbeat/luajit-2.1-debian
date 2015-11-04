@@ -1,6 +1,6 @@
 /*
 ** Client for the GDB JIT API.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lj_gdbjit_c
@@ -358,6 +358,8 @@ static const ELFheader elfhdr_template = {
   .eosabi = 2,
 #elif defined(__OpenBSD__)
   .eosabi = 12,
+#elif defined(__DragonFly__)
+  .eosabi = 0,
 #elif (defined(__sun__) && defined(__svr4__))
   .eosabi = 6,
 #else
@@ -554,8 +556,8 @@ static void LJ_FASTCALL gdbjit_ehframe(GDBJITctx *ctx)
     DB(DW_CFA_offset|DW_REG_15); DUV(4);
     DB(DW_CFA_offset|DW_REG_14); DUV(5);
     /* Extra registers saved for JIT-compiled code. */
-    DB(DW_CFA_offset|DW_REG_13); DUV(9);
-    DB(DW_CFA_offset|DW_REG_12); DUV(10);
+    DB(DW_CFA_offset|DW_REG_13); DUV(LJ_GC64 ? 10 : 9);
+    DB(DW_CFA_offset|DW_REG_12); DUV(LJ_GC64 ? 11 : 10);
 #elif LJ_TARGET_ARM
     {
       int i;

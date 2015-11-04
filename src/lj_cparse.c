@@ -1,6 +1,6 @@
 /*
 ** C declaration parser.
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #include "lj_obj.h"
@@ -784,6 +784,10 @@ static void cp_push_type(CPDecl *decl, CTypeID id)
     cp_push(decl, info & ~CTMASK_CID, size);  /* Copy type. */
     break;
   case CT_ARRAY:
+    if ((ct->info & (CTF_VECTOR|CTF_COMPLEX))) {
+      info |= (decl->attr & CTF_QUAL);
+      decl->attr &= ~CTF_QUAL;
+    }
     cp_push_type(decl, ctype_cid(info));  /* Unroll. */
     cp_push(decl, info & ~CTMASK_CID, size);  /* Copy type. */
     decl->stack[decl->pos].sib = 1;  /* Mark as already checked and sized. */
@@ -1244,7 +1248,7 @@ static void cp_struct_layout(CPState *cp, CTypeID sid, CTInfo sattr)
       sinfo |= (info & (CTF_QUAL|CTF_VLA));  /* Merge pseudo-qualifiers. */
 
       /* Check for size overflow and determine alignment. */
-      if (sz >= 0x20000000u || bofs + csz < bofs) {
+      if (sz >= 0x20000000u || bofs + csz < bofs || (info & CTF_VLA)) {
 	if (!(sz == CTSIZE_INVALID && ctype_isarray(info) &&
 	      !(sinfo & CTF_UNION)))
 	  cp_err(cp, LJ_ERR_FFI_INVSIZE);
