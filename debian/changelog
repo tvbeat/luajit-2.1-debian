@@ -1,3 +1,9 @@
+luajit (2.1.0-4+beta2) tvbeat-xenial; urgency=medium
+
+  * update to luajit 2.1 beta2
+
+ -- Luka Blaskovic <lblasc@tvbeat.com>  Mon, 14 Mar 2016 12:04:48 +0000
+
 luajit (2.1.0-3+0029110) tvbeat-jessie; urgency=medium
 
   * update luajit to 0029110ce9d493e670bfebbb95fb598c7c727d71
